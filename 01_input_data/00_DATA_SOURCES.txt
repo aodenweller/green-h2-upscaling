@@ -1,0 +1,58 @@
+This file was generated on 2022-01-27 by Adrian Odenweller (adrian.odenweller@pik-potsdam.de).
+
+The data used in this study was obtained from the following sources.
+
+1. IEA Hydrogen Projects database
+https://www.iea.org/data-and-statistics/data-product/hydrogen-projects-database
+
+2. BP Statistical Review of World Energy 2021
+https://www.bp.com/en/global/corporate/energy-economics/statistical-review-of-world-energy.html
+
+3. Electrolysis CAPEX and learning rate is based on
+Everall, J., Ueckerdt, F. (2021): Electrolyser CAPEX and efficiency data for: Potential and risks of hydrogen-based e-fuels in climate change mitigation
+https://doi.org/10.5281/zenodo.4619891
+
+4. WW2 US aircraft
+Modley, R. (1945): Aviation facts and figures, McGraw-Hill Book Company, New York and London.
+http://www.aia-aerospace.org/wp-content/uploads/2016/06/Aviation-Facts-and-Figures-1945.pdf
+
+5. WW2 US liberty ships
+Fischer, G. J. (1949): A Statistical Summary of Shipbuilding Under the US Maritime Commission During World War II, US Government Printing Office.
+
+6. US and soviet nuclear weapons
+Norris, R. S., Kristensen H. M. (2015): Global nuclear weapons inventories, 1945–2010, Bulletin of the Atomic Scientists, Volume 66.
+https://doi.org/10.2968%2F066004008
+
+7. Internet host count
+Internet Systems Consortium (2019): Internet Domain Survey
+https://www.isc.org/survey/
+
+8. China high-speed rail network
+International union of railways (2021): High speed lines in the world
+https://uic.org/passenger/highspeed/article/high-speed-database-maps
+
+9. US dry shale gas
+U.S. Energy Information Administration (2021): U.S. Shale Production
+https://www.eia.gov/dnav/ng/hist/res_epg0_r5302_nus_bcfa.htm
+
+10. Smartphone shipments (cumulative)
+https://www.statista.com/statistics/263441/global-smartphone-shipments-forecast/
+https://www.statista.com/statistics/271539/worldwide-shipments-of-leading-smartphone-vendors-since-2007/
+Kenney, M., Pon, B. (2011): Structuring the Smartphone Industry: Is the Mobile Internet OS Platform the Key?, Journal of Industry Competition and Trade 11(3), https://doi.org/10.1007/s10842-011-0105-6
+
+11. Europe e-bike sales (cumulative)
+https://www.statista.com/statistics/276036/unit-sales-e-bikes-europe/
+https://www.ziv-zweirad.de/fileadmin/redakteure/Downloads/Marktdaten/PM_2021_10.03._ZIV-Praesentation_10.03.2021_mit_Text.pdf
+
+12. COVID vaccinations
+Mathieu, E., Ritchie, H., Ortiz-Ospina, E. et al. (2021): A global database of COVID-19 vaccinations. Nat Hum Behav. https://doi.org/10.1038/s41562-021-01122-8
+https://github.com/owid/covid-19-data/tree/master/public/data
+
+13. Global final energy from IEA NZE scenario
+IEA (2021): Net Zero by 2050, International Energy Agency, Paris.
+https://www.iea.org/data-and-statistics/data-product/net-zero-by-2050-scenario
+
+14. EU final energy from INNOPATHS scenarios
+Rodrigues et al. (2022): Narrative-driven alternative roads to achieve mid-century CO2 net neutrality in Europe, Energy 239, Part A.
+https://doi.org/10.1016/j.energy.2021.121908
+https://innopaths.eu/lcpp/#/

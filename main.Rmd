@@ -1,0 +1,1863 @@
+---
+title: "Green hydrogen upscaling"
+author: "Adrian Odenweller"
+output:
+  html_document:
+    df_print: paged
+---
+
+Main analysis file for the  article:
+*Probabilistic feasibility space of scaling up green hydrogen supply*
+
+# Setup
+
+```{r setup, warning = FALSE}
+library(tidyverse)  # Data handling
+library(quitte)  # Data handling
+library(readxl)  # Reading excel files
+library(ggplot2)  # Plotting
+library(cowplot)  # Plotting layout
+library(ggnewscale)  # Multiple legends
+library(ggExtra)  # Marginal distributions
+library(ggsci)  # Colour palettes
+library(scales)  # Plotting axes
+library(zoo)  # Function na.approx
+library(ggforce)  # Function facet_zoom
+library(colorspace)  # Colour manipulation
+library(nleqslv)  # Solving non-linear systems of equations
+library(truncnorm)  # Truncated normal distribution
+library(lubridate)  # Working with dates
+
+# Input data folder
+path.input <- "01_input_data/"
+# Output folder
+path.output <- "02_output_plots/"
+# Helper functions folder
+path.helpers <- "03_helpers/"
+# Plotting functions folder
+path.plotting <- "04_plotting/"
+
+# Source helper functions
+source(paste0(path.helpers, "ReadIEAHydrogenProjectsDB.R"))
+source(paste0(path.helpers, "ReadBPDB.R"))
+source(paste0(path.helpers, "calcTruncNormParam.R"))
+source(paste0(path.helpers, "calcMonteCarloSample.R"))
+source(paste0(path.helpers, "calcTechnologyDiffusion.R"))
+
+# Source plotting functions
+source(paste0(path.plotting, "plotElectrolysisProjects.R"))
+source(paste0(path.plotting, "plotIllustration.R"))
+source(paste0(path.plotting, "plotParameterDistributions.R"))
+source(paste0(path.plotting, "plotProbabilisticFeasibilitySpace.R"))
+source(paste0(path.plotting, "plotComparisonBreakthrough.R"))
+source(paste0(path.plotting, "plotComparisonCapacity.R"))
+source(paste0(path.plotting, "plotWindSolar.R"))
+
+# Mode of model execution
+#  Reproduction mode: Download pre-run simulation output from Zenodo first
+#  Simulation mode: 
+model.mode <- "reproduction"
+#model.mode <- "simulation"
+
+# Sample size (change to decrease computational effort)
+n <- 10000
+# Minimum annual growth rate
+bmin <- 0.15
+
+# Modelling assumptions and conversion factors
+eff <- 0.6  # 60 % due to mixture of hydrogen/e-fuels and transport
+flh <- 5000  # h
+
+# For plotting
+t.split <- 2023
+t.min <- 2000
+t.max <- 2030
+
+# Set plotting style
+font.size <- 7
+theme_set(theme_cowplot(font_size = font.size))
+color.pv <- "#ffb200"
+color.wind <- "#337fff"
+
+# Quantile calculation
+quibble <- function(x, q = c(0.25, 0.33, 0.5, 0.66, 0.75)) {
+  tibble(x = quantile(x, q), q = q)
+}
+
+# Regions
+region.mapping.eu <- c(
+  "Denmark" = "EU",
+  "France" = "EU",
+  "Germany" = "EU",
+  "Netherlands" = "EU",
+  "Spain" = "EU",
+  "Rest EU" = "EU"
+)
+region.mapping.global <- c(
+  "Denmark" = "EU",
+  "France" = "EU",
+  "Germany" = "EU",
+  "Netherlands" = "EU",
+  "Spain" = "EU",
+  "Rest EU" = "EU",
+  "MENA" = "MENA",
+  "N. America" = "N. America",
+  "C. + S. America" = "C. + S. America",
+  "Asia" = "Asia",
+  "Australia" = "Australia",
+  "Other" = "Other"
+  )
+```
+
+## Check file availability
+
+```{r}
+if (model.mode == "reproduction"){
+  print("Model started in reproduction mode.")
+  files.required <- c("02_output_plots/01_conventional_growth_parameters.rds",
+                      "02_output_plots/02_conventional_growth_sample.rds",
+                      "02_output_plots/03_conventional_growth_results.rds",
+                      "02_output_plots/04_unconventional_growth_parameters.rds",
+                      "02_output_plots/05_unconventional_growth_sample.rds",
+                      "02_output_plots/06_unconventional_growth_results.rds")
+  if (all(file.exists(files.required)) == TRUE){
+    print("All required simulation result files found.")
+  } else
+    print("Required simulation result files are missing.")
+  
+} else if (model.mode == "simulation"){
+  print("Model started in simulation mode.")
+  } else {
+  stop("Please specify either reproduction or simulation mode.")
+}
+```
+
+# IEA Hydrogen Projects Database
+
+```{r, message = FALSE}
+# IEA Hydrogen Projects Database
+file.h2projects <- paste0(path.input, "IEA Hydrogen Projects Database 2021 (revised).xlsx")
+# Changes to IEA from own research
+file.h2projects.changed <- paste0(path.input, "IEA Hydrogen Projects Database_CHANGES_ONLY.xlsx")
+data.h2 <- ReadIEAHydrogenProjectsDB(
+  file.h2projects,
+  h2projects.range = "A5:AF994",  # ADJUST IF NECESSARY
+  file.h2projects.changed,
+  h2projects.changed.range = "A5:AF54"  # ADJUST IF NECESSARY
+)
+```
+
+## FIGURE 1: Electrolysis projects
+
+```{r, message = FALSE}
+
+regions.h2 = tibble(name = c("EU", "Global"),
+                    list = list(
+                      names(region.mapping.eu),
+                      unique(data.h2$region)
+                    ))
+
+# EU
+regions <- regions.h2$list[[1]]
+names(regions) <- regions
+
+p1 <- plotElectrolysisProjects(data.h2 = data.h2,
+                   regions = regions,
+                   fill.by = "region",
+                   title = "EU by country",
+                   leg.label = "Country")
+
+p2 <- plotElectrolysisProjects(data.h2 = data.h2,
+                   regions = regions,
+                   title = "EU by status",
+                   fill.by = "status",
+                   leg.label = "Status")
+
+# Global
+regions <- region.mapping.global
+
+p3 <- plotElectrolysisProjects(data.h2 = data.h2,
+                   regions = regions,
+                   fill.by = "region",
+                   title = "Global by region",
+                   leg.label = "Region")
+
+p4 <- plotElectrolysisProjects(data.h2 = data.h2,
+                   regions = regions,
+                   fill.by = "status",
+                   title = "Global by status",
+                   leg.label = "Status")
+
+p <- plot_grid(p1, p3, p2, p4,
+               ncol = 2,
+               labels = "auto",
+               label_size = 1.2*font.size)
+
+print(p)
+ggsave(paste0(path.output, "FIG01_electrolysis_projects.png"),
+       bg = "white", width = 18, height = 12, units = "cm")
+ggsave(paste0(path.output, "FIG01_electrolysis_projects.svg"),
+       bg = "white", width = 18, height = 12, units = "cm")
+
+```
+
+# Conventional growth
+
+## FIGURE 2: Illustration
+
+```{r, message = FALSE, warning = FALSE}
+
+p <- plotIllustration()
+
+print(p)
+ggsave(paste0(path.output, "FIG02_illustration.png"),
+       width = 18, height = 12, units = "cm", bg = "white")
+ggsave(paste0(path.output, "FIG02_illustration.svg"),
+       width = 18, height = 12, units = "cm", bg = "white")
+
+```
+
+## Input data
+
+### Wind and solar power capacities
+
+```{r, message = FALSE}
+# BP Statistical Review of World Energy 2021
+file.bp <- paste0(path.input, "bp-stats-review-2021-all-data.xlsx")
+data.bp <- ReadBPDB(file.bp)
+```
+
+### Electrolysis CAPEX and learning rate
+
+```{r, message = FALSE}
+# Electrolysis CAPEX and learning rate
+file.capex.lr <- paste0(path.input, "Electrolyser_Data_Complete_Efuels_JE_FU_AO.xlsx")
+data.capex <- read_excel(file.capex.lr, sheet = "Data", col_names = TRUE) %>% 
+  select(Scenario_Year, Temp, Cost_eu_KW, Efficiency_LHV, Method, Bracket) %>% 
+  filter(Bracket == 2020,
+         Method != "SOEC",
+         !is.na(Cost_eu_KW))
+data.learning <- read_excel(file.capex.lr, sheet = "Learning_rates", col_names = TRUE) %>% 
+  select(Scenario_Year, Learning_rate, Method) %>% 
+  filter(Method != "SOEC",
+         !is.na(Learning_rate))
+```
+
+### Electrolysis deployment targets
+
+```{r}
+data.targets <- tribble(
+  ~ region, ~year, ~unit, ~value,
+  # EU hydrogen strategy
+  "EU", 2024, "GW", 6,
+  "EU", 2030, "GW", 40,
+  "EU", 2050, "GW", 500,
+  # Global: IEA Hydrogen Projects Database and IEA NZE scenario
+  "Global", 2030, "GW", 154,  # Cumulative announcements
+  "Global", 2050, "GW", 3600,  # IEA NZE
+)
+```
+
+
+## Emergence growth rate from wind and solar power
+
+```{r, message = FALSE}
+# Fit exponential growth of wind and solar power in slices of varying lengths
+
+# Region mapping
+regions.bp = tibble(name = c("EU", "Global"),
+                 list = list("EU",
+                             "Global"),
+                 span = list(1995:2010,
+                             1995:2010))
+
+time.slice.length <- 5:10
+
+# Additive error specification
+exp_fit <- function(df)
+  nls(capacity ~ a*(1 + b)**(year-1995),
+      data = df,
+      start = list(a = 100,
+                   b = 0.4))
+
+# Get growth rate
+get_growthrate <- function(mod)
+  coef(mod)[["b"]]
+
+# Get parameter a
+get_a <- function(mod)
+  coef(mod)[["a"]]
+
+# Get predicted values
+get_predict <- function(mod)
+  list(predict(mod))
+
+# Loop over regions and time slices
+data.bp.fit <- NULL
+# Loop over regions
+for (r in 1:dim(regions.bp)[1]) {
+  time.span <- regions.bp$span[[r]]
+  # Loop over lengths of time slice
+  for (t in time.slice.length){
+    # Get individual time slices for each length t
+    for (s in 1:(length(time.span)-t+1)){
+      slice <- time.span[s:(s+t-1)]
+      
+      temp <- data.bp %>% 
+        filter(region %in% regions.bp$list[[r]],
+               year %in% slice) %>% 
+        group_by(technology, year) %>% 
+        summarise(capacity = sum(capacity)) %>% 
+        group_by(technology) %>% 
+        nest() %>% 
+        # Fit exponential models using purrr::map
+        mutate(model.exp = map(data, exp_fit)) %>% 
+        transmute(technology,
+                  b = map_dbl(model.exp, get_growthrate),
+                  a = map_dbl(model.exp, get_a),
+                  predict = map(model.exp, get_predict),
+                  slice.length = t,
+                  slice.start = slice[1],
+                  region = regions.bp$name[[r]])
+     
+      data.bp.fit <- bind_rows(data.bp.fit, temp)
+    }
+  }
+}
+```
+
+## Monte Carlo sampling: Initial capacity, emergence growth rate
+
+```{r, message = FALSE}
+# Region mapping
+regions.h2 = tibble(name = c("EU", "Global"),
+                    list = list(
+                      names(region.mapping.eu),
+                      unique(data.h2$region)
+                    ))
+
+if (model.mode == "simulation") {
+  temp <- calcMonteCarloSample(
+    # Sample size
+    N = n,
+    # Initial value distribution
+    a.status = c("Decommissioned", "Operational", "Under construction"),
+    # Lower truncation
+    cap.1 = c("Decommissioned", "Operational", "Under construction", "FID"),
+    # Condition 1
+    cumprob.1 = 0.15,
+    # Cumulative probability of condition 1
+    feasibility.success.rate = 0.3,
+    # Condition 2: x % of feasibility study projects
+    # Growth rate distribution
+    slice.len = 7,
+    # Length of time slice (wind, solar)
+    b.min = bmin  # Lower truncation
+  )
+  data.input <- temp[[1]]
+  data.input.param <- temp[[2]]
+  saveRDS(data.input.param,
+          "02_output_plots/01_conventional_growth_parameters.rds")
+  saveRDS(data.input,
+          "02_output_plots/02_conventional_growth_sample.rds")
+} else if (model.mode == "reproduction") {
+  data.input.param <-
+    readRDS("02_output_plots/01_conventional_growth_parameters.rds")
+  data.input <-
+    readRDS("02_output_plots/02_conventional_growth_sample.rds")
+}
+
+```
+
+## FIGURE 3: Parameter distributions
+
+```{r, warning = FALSE}
+plots <- plotParameterDistributions(data.input = data.input,
+                                    data.input.param = data.input.param)
+
+# Total plot
+p.col1 <- plot_grid(plots[[1]] + theme(legend.position = "none"),
+                    plots[[2]] + theme(legend.position = "none"),
+                    plots[[3]] + theme(legend.position = "none"),
+                    ncol = 1,
+                    align = "v",
+                    rel_heights = c(1, 0.15, 1.1),
+                    labels = c("a", "", "c"),
+                    label_size = 1.2*font.size
+                    )
+
+p.col2 <- plot_grid(plots[[4]] + theme(legend.position = "none"),
+                    plots[[5]] + theme(legend.position = "none"),
+                    plots[[6]] + theme(legend.position = "none"),
+                    ncol = 1,
+                    align = "v",
+                    rel_heights = c(1, 0.15, 1.1),
+                    labels = c("b", "", "d"),
+                    label_size = 1.2*font.size
+                    )
+
+p.plots <- plot_grid(p.col1,
+                     p.col2,
+                     nrow = 1)
+
+p.legend <- plot_grid(NULL,
+                      get_legend(plots[[1]] + theme(legend.position = "bottom")),
+                      get_legend(plots[[2]] + theme(legend.direction = "vertical")),
+                      NULL,
+                      nrow = 1,
+                      rel_widths = c(1,0.9,0.7,1))
+
+p <- plot_grid(p.plots,
+               p.legend,
+               ncol = 1,
+               rel_heights = c(1,0.15))
+
+print(p)
+ggsave(paste0(path.output, "FIG03_parameter_distributions.png"),
+       width = 18, height = 14, units = "cm", bg = "white")
+ggsave(paste0(path.output, "FIG03_parameter_distributions.svg"),
+       width = 18, height = 14, units = "cm", bg = "white")
+```
+
+## Demand pull
+
+```{r}
+# Different anticipation scenarios (in years)
+anticipation <- c(0, 5, 10, 100)  # 100y = full demand pull
+
+# Model time span
+model.time <- t.split:2050
+
+data.demand <- NULL
+for (r in 1:2){
+  for (a in anticipation){
+    
+    # Targets in region
+    targets.temp <- data.targets %>%
+      filter(region == regions.h2$name[[r]])
+    
+    # Calculate linear demand pull with anticipation
+    data.temp <- tibble(region = regions.bp$name[r],
+                        year = model.time) %>% 
+      mutate(demand = approx(x = targets.temp$year,
+                             y = targets.temp$value,
+                             xout = model.time,
+                             method = "linear",
+                             rule = 2)[["y"]]) %>% 
+      mutate(demand = lead(demand, a, default = last(demand)),
+             anticipation = a) %>% 
+      group_by(region) %>%
+      nest(demand = c("year", "demand")) %>% 
+      ungroup()
+    
+    data.demand <- bind_rows(data.demand, data.temp)
+  }
+}
+```
+
+## Call simulation
+
+```{r}
+if (model.mode == "simulation") {
+  # Keep track of time
+  start.time <- Sys.time()
+  # Call diffusion model
+  data.results <-
+    calcTechnologyDiffusion(data.demand, data.input, 0.25)
+  # Save simulation results
+  saveRDS(data.results,
+          "02_output_plots/03_conventional_growth_results.rds")
+  # Print duration of simulation
+  end.time <- Sys.time()
+  time.taken <- end.time - start.time
+  print(time.taken)
+  
+} else if (model.mode == "reproduction") {
+  data.results <-
+    readRDS("02_output_plots/03_conventional_growth_results.rds")
+}
+```
+
+## FIGURE 4: Probabilistic feasibility space
+
+```{r}
+colours <- pal_npg()(2)
+
+p1 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "EU", anticipation == 5),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2038,
+  title = "EU"
+)
+
+p2 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "Global", anticipation == 5),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2045,
+  title = "Global"
+)
+
+p.legend <- p1[[2]]
+
+p.plots <- plot_grid(p1[[1]], p2[[1]],
+                     ncol = 2,
+                     rel_widths = c(1, 1),
+                     labels = "auto",
+                     label_size = 1.2*font.size)
+
+p <- plot_grid(p.plots,
+               NULL,
+               p.legend,
+               ncol = 3,
+               rel_widths = c(1, 0.05, 0.15))
+
+print(p)
+ggsave(paste0(path.output, "FIG04_probabilistic_feasibility_space.png"),
+       width = 18, height = 9, units = "cm", bg = "white")
+ggsave(paste0(path.output, "FIG04_probabilistic_feasibility_space.svg"),
+       width = 18, height = 9, units = "cm", bg = "white")
+```
+
+## Quantiles of results
+
+```{r, message = FALSE}
+
+for (r in c("EU", "Global")){
+  
+  stats <- data.results %>% 
+  filter(region == r,
+         anticipation == 5) %>% 
+  select(!demand) %>% 
+  unnest(sensitivities) %>% 
+  unnest(results) %>% 
+  filter(year %in% c(2030, 2040, 2050)) %>% 
+  group_by(year) %>% 
+  summarise(quibble(forecast))
+  
+  print(stats)
+}
+
+```
+
+
+# Unconventional growth
+
+## Input data
+
+### WW2 US aircraft
+
+```{r}
+#www.aia-aerospace.org/wp-content/uploads/2016/06/Aviation-Facts-and-Figures-1945.pdf
+
+data.ww2aircraft <- tibble(
+  year = 1935:1944,
+  prod = c(459, 1141, 949, 1800, 2141, 6086, 19290, 47873, 85946, 96369)
+) %>% 
+  mutate(value = cumsum(prod),
+         unit = "units",
+         tech = "WW2 US aircraft") %>% 
+  select(!prod) %>% 
+  mutate(number = 1)
+
+```
+
+### WW2 US liberty ships
+
+```{r}
+file.libertyships <- paste0(path.input, "Liberty_ships.xlsx")
+
+data.libertyships <- read_excel(file.libertyships, sheet = "matlab") %>% 
+  select(year, LS_cum) %>% 
+  rename(value = LS_cum) %>% 
+  group_by(year) %>% 
+  slice(n()) %>% 
+  mutate(unit = "units",
+         tech = "WW2 US liberty ships") %>%
+  ungroup() %>% 
+  add_row(tibble(year = 1938,
+                 unit = "units",
+                 tech = "WW2 US liberty ships",
+                 value = 0)) %>%
+  arrange(year) %>% 
+  mutate(number = 2)
+```
+
+### US nuclear weapons
+
+```{r}
+#https://doi.org/10.2968%2F066004008
+
+file.nuclearweapons <- paste0(path.input, "Nuclear_weapons.xlsx")
+
+data.usnuclearweapons <- read_excel(file.nuclearweapons, range = "A1:B57") %>% 
+  rename(year = Year,
+         value = US) %>% 
+  mutate(unit = "units",
+         tech = "US Nuclear weapons") %>% 
+  filter(year <= 1967) %>% 
+  mutate(number = 3)
+```
+
+### Soviet nuclear weapons
+
+```{r}
+#https://doi.org/10.2968%2F066004008
+
+data.sovietnuclearweapons <-
+  read_excel(file.nuclearweapons, range = "A1:C57") %>%
+  rename(year = Year,
+         value = Russia) %>% 
+  select(!US) %>% 
+  mutate(unit = "units",
+         tech = "Soviet Nuclear weapons") %>% 
+  filter(!is.na(value), year <= 1986) %>% 
+  mutate(number = 4)
+```
+
+### Nuclear power in France
+
+```{r, warning = FALSE}
+data.nuclear <-
+  read_excel(file.bp,
+             sheet = "Nuclear Generation - TWh",
+             range = "B3:BE32",
+             col_types = "numeric") %>%
+  slice(n()) %>% 
+  pivot_longer(cols = "1965":"2020", names_to = "year", values_to = "value") %>% 
+  mutate(year = as.integer(year),
+         value = as.double(value),
+         unit = "TWh/yr",
+         tech = "Nuclear France") %>% 
+  filter(year <= 2005) %>% 
+  mutate(number = 5)
+```
+
+### Internet host count
+
+```{r}
+file.internet <- paste0(path.input, "Internet_host_count.xlsx")
+
+data.internet <- read_excel(file.internet) %>% 
+  mutate(year = decimal_date(date),
+         value = value/1E6,
+         unit = "million hosts",
+         tech = "Internet host count") %>% 
+  select(year, value, unit, tech) %>% 
+  arrange(year) %>% 
+  filter(year < 2018) %>% 
+  mutate(number = 6)
+```
+
+### China high-speed rail network
+
+```{r}
+#https://uic.org/passenger/highspeed/article/high-speed-database-maps
+
+file.chinahsr <- paste0(path.input, "china_hsr.xlsx")
+
+data.chinahsr <- read_excel(file.chinahsr, sheet = "values") %>% 
+  group_by(year) %>% 
+  summarise(new = sum(km)) %>% 
+  mutate(value = cumsum(new),
+         unit = "km",
+         tech = "High-speed rail China") %>% 
+  select(year, value, unit, tech) %>% 
+  complete(year = seq(2003, 2020)) %>% 
+  fill(value, unit, tech) %>% 
+  add_row(tibble(year = 2002,
+                 value = 0,
+                 unit = "km",
+                 tech = "High-speed rail China")) %>% 
+  arrange(year) %>% 
+  mutate(number = 7)
+```
+
+### US dry shale gas
+
+```{r}
+#https://www.eia.gov/dnav/ng/hist/res_epg0_r5302_nus_bcfa.htm
+
+file.shale <- paste0(path.input, "RES_EPG0_R5302_NUS_BCFa.xls")
+
+data.shale <- read_excel(file.shale,
+                         sheet = "Data 1",
+                         range = "A4:B16",
+                         col_names = c("date", "value")) %>% 
+  mutate(unit = "billion cubic feet",
+         tech = "US shale gas",
+         year = decimal_date(date)) %>% 
+  select(year, value, unit, tech) %>% 
+  mutate(number = 8)
+```
+
+### Smartphone shipments (cumulative)
+
+```{r}
+#https://www.statista.com/statistics/263441/global-smartphone-shipments-forecast/
+#https://www.statista.com/statistics/271539/worldwide-shipments-of-leading-smartphone-vendors-since-2007/
+#https://www.researchgate.net/publication/50836092_Structuring_the_Smartphone_Industry_Is_the_Mobile_Internet_OS_Platform_the_Key/figures
+
+data.smartphones <- tibble(
+  year = 2006:2020,
+  prod = c(64.1, 122.36, 151.4, 173.5, 304.7, 494.5, 725.3, 1018.7, 1301.7, 1437.2, 1473.4, 1465.5, 1402.6, 1371.1, 1280)
+) %>% 
+  mutate(value = cumsum(prod),
+         unit = "million units",
+         tech = "Smartphones globally") %>% 
+  select(!prod) %>% 
+  mutate(number = 9)
+```
+
+### Europe e-bike sales (cumulative)
+
+```{r}
+#https://www.statista.com/statistics/276036/unit-sales-e-bikes-europe/
+#https://www.ziv-zweirad.de/fileadmin/redakteure/Downloads/Marktdaten/PM_2021_10.03._ZIV-Praesentation_10.03.2021_mit_Text.pdf
+
+data.ebikes <- tibble(
+  year = 2009:2020,
+  sales = c(0.5, 0.7, 0.9, 1.1, 1, 1.25, 1.5, 1.74, 2.2, 2.92, 3.6, 5.1)
+) %>% 
+  mutate(value = cumsum(sales),
+         unit = "million units",
+         tech = "E-Bikes Europe") %>% 
+  select(!sales) %>% 
+  mutate(number = 10)
+```
+
+### COVID-19 vaccinations
+
+```{r}
+#https://ourworldindata.org/covid-vaccinations
+
+file.covid <- paste0(path.input, "owid_vaccinations.csv")
+
+data.covid <- read.csv(file.covid) %>% 
+  filter(iso_code == "OWID_WRL") %>% 
+  select(iso_code, location, date, total_vaccinations) %>% 
+  as_tibble() %>% 
+  mutate(date = as_date(date, format = "%d-%m-%y"),
+         date.month = ceiling_date(date, "month") - 1) %>% 
+  group_by(date.month) %>% 
+  slice(n()) %>% 
+  ungroup() %>% 
+  filter(date == date.month) %>% 
+  mutate(year = decimal_date(date),
+         value = total_vaccinations/1E6) %>% 
+  mutate(unit = "million doses",
+         tech = "COVID vaccinations") %>% 
+  select(year, value, unit, tech)
+
+```
+
+## Join datasets
+
+```{r}
+data.unconventional <- bind_rows(
+  data.ww2aircraft,
+  data.libertyships,
+  data.usnuclearweapons,
+  data.sovietnuclearweapons,
+  data.nuclear,
+  data.internet,
+  data.chinahsr,
+  data.shale,
+  data.smartphones,
+  data.ebikes,
+  data.covid,
+) %>% 
+  group_by(tech) %>% 
+  mutate(value.norm = value/max(value)) %>%
+  ungroup() %>% 
+  arrange(number, year)
+```
+
+## Estimate logistic growth rates
+
+```{r}
+# Loop over technologies and time slices
+param.unconventional.fit <- NULL
+techs <- unique(data.unconventional$tech)
+for (i in techs) {
+  # Filter technology
+  data.tech <- data.unconventional %>%
+    filter(tech == i)
+  fit <- nls(value.norm ~ SSlogis(year, Asym, xmid, scal),
+             data = data.tech)
+  r <- exp(1/coef(fit)["scal"]) - 1  # Transform into annual growth rate
+  # Temporary data to save
+  temp <- tibble(
+    tech = i,
+    b = r
+  )
+  param.unconventional.fit <- bind_rows(param.unconventional.fit, temp)
+}
+# Exclude COVID-19 vaccinations
+param.unconventional.fit <- param.unconventional.fit %>% 
+  filter(tech != "COVID vaccinations")
+```
+
+## Re-parameterise growth distribution
+
+```{r}
+if (model.mode == "simulation"){
+# New growth rate distribution
+b.mean <- mean(param.unconventional.fit %>% pull(b))
+b.sd <- sd(param.unconventional.fit %>% pull(b))
+# New growth rate sample
+b.sample <- rtruncnorm(n = n, a = 0.15, b = Inf, mean = b.mean, sd = b.sd)
+data.input.unconv <- data.input
+data.input.unconv$growth <- rep(b.sample, 2)  # For both EU and globally
+# New input file
+data.input.param.unconv <- data.input.param %>% 
+  select(!c(growth.solar, growth.wind))
+# New growth parameter values
+data.input.param.unconv$growth.min <- bmin
+data.input.param.unconv$growth.mean <- b.mean
+data.input.param.unconv$growth.sd <- b.sd
+data.input.param.unconv$growth.sample.mean <- mean(b.sample)
+data.input.param.unconv$growth.sample.sd <- sd(b.sample)
+data.input.param.unconv$growth.sample.q25 <- quantile(b.sample, 0.25)
+data.input.param.unconv$growth.sample.q75 <- quantile(b.sample, 0.75)
+# Save parameters and sample
+saveRDS(data.input.param.unconv, "02_output_plots/04_unconventional_growth_parameters.rds")
+saveRDS(data.input.unconv, "02_output_plots/05_unconventional_growth_sample.rds")
+} else if (model.mode == "reproduction"){
+  # Load parameters and sample
+  data.input.param.unconv <- readRDS("02_output_plots/04_unconventional_growth_parameters.rds")
+  data.input.unconv <- readRDS("02_output_plots/05_unconventional_growth_sample.rds")
+}
+```
+
+## Call simulation
+
+```{r}
+if (model.mode == "simulation") {
+  # Keep track of time
+  start.time <- Sys.time()
+  # Call diffusion model
+  data.results.unconv <-
+    calcTechnologyDiffusion(data.demand, data.input.unconv, 0.25)
+  # Save simulation results
+  saveRDS(data.results.unconv,
+          "02_output_plots/06_unconventional_growth_results.rds")
+  # Print duration of simulation
+  end.time <- Sys.time()
+  time.taken <- end.time - start.time
+  print(time.taken)
+  
+} else if (model.mode == "reproduction") {
+  data.results.unconv <-
+    readRDS("02_output_plots/06_unconventional_growth_results.rds")
+}
+```
+
+## FIGURE 5: Unconventional growth
+
+```{r, warning = FALSE}
+techs <- data.unconventional %>% 
+  filter(tech != "COVID vaccinations") %>% 
+  pull(tech) %>% 
+  unique()
+colors.tech <- pal_npg()(length(techs))
+names(colors.tech) <- techs
+
+top <- 1.1
+mid <- 0.9
+low <- 0.7
+
+# Annotation labels
+data.plot.labels <- tribble(
+  ~year, ~ypos, ~color, ~label,
+  1938, top, "WW2 US aircraft", "1: WWII US\naircraft",
+  1946, mid, "WW2 US liberty ships", "2: WWII US\nliberty ships",
+  1960, top, "US Nuclear weapons", "3: US nuclear\nweapons",
+  1966, mid, "Soviet Nuclear weapons", "4: Soviet nuclear\nweapons",
+  1986, top, "Nuclear France", "5: Nuclear power\nFrance",
+  1998, low, "Internet host count", "6: Internet\nhosts",
+  2005, top, "High-speed rail China", "7: High-speed\nrail China",
+  2008, 1.27, "US shale gas", "8: US dry\nshale gas",
+  2020, 1.27, "Smartphones globally", "9: Smartphones\nglobally",
+  2021, top, "E-Bikes Europe", "10: E-Bikes\nEurope",
+  2022.5, mid, "COVID vaccinations", "COVID-19\nvaccinations"
+)
+
+# PANEL a: Unconventional growth curves
+p.curves <- ggplot() +
+  geom_line(data = data.unconventional,
+            mapping = aes(x = year, y = value.norm, color = tech)) + 
+  scale_color_manual(name = NULL,
+                     values = colors.tech) +
+  scale_x_continuous(name = "",
+                     breaks = seq(1940, 2020, 10),
+                     limits = c(1938, 2032)) +
+  scale_y_continuous(name = "") + 
+  ggtitle("Normalised unconventional growth") +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()
+        ) +
+  geom_label(data = data.plot.labels,
+            mapping = aes(x = year, y = ypos, label = label, color = color),
+            size = 6 / .pt,
+            hjust = 0,
+            label.padding = unit(0.7, "mm")) +
+  coord_cartesian(ylim = c(0, 1.2),clip = "off") +
+  geom_line(mapping = aes(x = c(1938, 2024), y = 1),
+            linetype = "dotted",
+            alpha = 0.5)
+
+growth.min <- 0.15
+growth.max <- 4
+
+# Sample
+data.plot.sample <- data.input.unconv %>% 
+  filter(region == "Global")  # The same anyway
+
+# Density
+data.plot.density <- tibble(
+  growth = seq(growth.min, growth.max, length.out = 100),
+  growth.dens = dtruncnorm(growth,
+                           a = growth.min,
+                           mean = data.input.param.unconv$growth.mean[[1]],
+                           sd = data.input.param.unconv$growth.sd[[1]])
+)
+
+data.plot.growthrates <- param.unconventional.fit %>% 
+  ungroup() %>% 
+  mutate(number = 1:n()) %>% 
+  arrange(b) %>% 
+  mutate(order = 1:n()) %>% 
+  mutate(ypos = case_when(order %% 4 == 1 ~ 0.45,
+                          order %% 4 == 2 ~ 0.35,
+                          order %% 4 == 3 ~ 0.25,
+                          order %% 4 == 0 ~ 0.15))
+
+bins <- 20
+
+# PANEL b: Growth rates
+p.growth <- ggplot() + 
+  # Sample
+  geom_histogram(data = data.plot.sample,
+                 mapping = aes(x = 100*growth, y = 100*..density.., color = "Sample"),
+                 binwidth = (100*growth.max - 100*growth.min)/bins,
+                 boundary = 100*growth.min,
+                 alpha = 0.3) +
+  scale_color_manual(name = NULL, values = c("Sample" = "grey")) +
+  # Distribution
+  new_scale_color() +
+  geom_line(data = data.plot.density,
+            mapping = aes(x = 100*growth, y = growth.dens, color = "Density")) +
+  scale_color_manual(name = NULL, values = c("Density" = "black")) +
+  new_scale_color() + 
+  # Vertical lines
+  geom_vline(data = data.plot.growthrates,
+             mapping = aes(xintercept = 100*b,
+                           color = tech),
+             linetype = "dashed") + 
+  scale_color_manual(name = NULL,
+                     values = colors.tech) +
+  # Numbers in boxes
+  geom_label(data = data.plot.growthrates,
+             mapping = aes(x = b*100,
+                           y = ypos,
+                           label = number,
+                           color =  tech),
+             size = 6 /.pt,
+             label.padding = unit(0.7, "mm")) +
+  scale_x_continuous(name = "Emergence growth rate [%/yr]",
+                     limits = c(0, 100*growth.max)) + 
+  ylab("Probability density") +
+  ggtitle("Distribution of unconventional growth rates") +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()
+        )
+
+# PANEL c + d: Unconventional electrolysis growth
+colours <- pal_npg()(2)
+
+p1 <-
+  plotProbabilisticFeasibilitySpace(
+    data.row = data.results.unconv %>%
+      filter(region == "EU", anticipation == 5),
+    data.targets = data.targets,
+    colour = colours[2],
+    marginal.year = 2030,
+    title = "EU",
+    ci.80 = T,
+    zoom = F
+  )
+
+p2 <-
+  plotProbabilisticFeasibilitySpace(
+    data.row = data.results.unconv %>%
+      filter(region == "Global", anticipation == 5),
+    data.targets = data.targets,
+    colour = colours[2],
+    marginal.year = 2030,
+    title = "Global",
+    ci.80 = T,
+    zoom = F
+  )
+
+# Arrange plots
+p.row1 <- plot_grid(p.curves + theme(legend.position = "none"),
+                    p.growth + theme(legend.position = "none"),
+                    ncol = 2,
+                    rel_widths = c(0.6, 0.4),
+                    labels = c("a", "b"),
+                    label_size = 1.2*font.size)
+
+p.row2 <- plot_grid(p1[[1]],
+                    p2[[1]],
+                    p1[[2]],
+                    ncol = 3,
+                    rel_widths = c(0.5, 0.5, 0.15),
+                    labels = c("c", "d", ""),
+                    label_size = 1.2*font.size)
+
+p <- plot_grid(p.row1,
+               p.row2,
+               ncol = 1)
+
+print(p)
+ggsave(paste0(path.output, "FIG05_unconventional_growth.png"),
+       width = 18, height = 13, units = "cm", bg = "white")
+ggsave(paste0(path.output, "FIG05_unconventional_growth.svg"),
+       width = 18, height = 13, units = "cm", bg = "white")
+```
+
+# Comparison of conventional and unconventional growth
+
+## Final energy data
+
+```{r, message = FALSE}
+# EU data
+# https://doi.org/10.1016/j.energy.2021.121908
+# https://innopaths.eu/lcpp/#/
+file.innopaths <- paste0(path.input, "innopaths_final_energy.csv")
+
+data.fe.innopaths <- read.quitte(file.innopaths, sep = ",") %>% 
+  filter(variable == "Final Energy",
+         region %in% c("EU28", "UKI"),
+         scenario %in% c("Efficient_1p5", "Incumb_1p5", "NewPl_1p5")) %>% 
+  arrange(model, scenario, period, region) %>% 
+  group_by(model, scenario, period) %>% 
+  # EU27 ~= EU28 - UKI
+  mutate(value = value - lead(value)) %>%
+  filter(!is.na(value)) %>% 
+  mutate(region = "EU27") %>%
+  # Calculate median over all models and scenarios
+  group_by(period, unit) %>% 
+  summarise(median = median(value)) %>% 
+  # PJ to TWh
+  mutate(median.twh = median/3.6)
+
+# Global data
+# https://www.iea.org/data-and-statistics/data-product/net-zero-by-2050-scenario
+file.ieanze <- paste0(path.input, "NZE2021_AnnexA.csv")
+
+data.fe.nze <- read.csv(file.ieanze) %>% 
+  as_tibble() %>% 
+  filter(Category == "Energy",
+         Product == "Total",
+         Flow == "Total final consumption") %>% 
+  # EJ to TWh
+  mutate(value = 1E3/3.6*Value,
+         unit = "TWh/yr") %>% 
+  rename(period = Year) %>% 
+  select(period, unit, value) %>% 
+  complete(period = seq(2020, 2050, 5)) %>% 
+  mutate(value = na.approx(value),
+         unit = "TWh/yr")
+
+```
+
+## FIGURE 6: Distribution of breakthrough year and electrolysis capacity
+
+```{r}
+source(paste0(path.plotting, "plotComparisonCapacity.R"))
+
+# EU breakthrough
+p1.eu <- plotComparisonBreakthrough(regi = "EU",
+                                    anticip = 5,
+                                    title = NULL)
+
+# EU 2030 capacity
+p2.eu <- plotComparisonCapacity(
+  regi = "EU",
+  anticip = 5,
+  title = "2030",
+  final.energy = data.fe.innopaths %>%
+    filter(period == 2030) %>%
+    pull(median.twh),
+  time.slice = 2030
+)
+
+# EU 2040 capacity
+p3.eu <- plotComparisonCapacity(
+  regi = "EU",
+  anticip = 5,
+  title = "2040",
+  final.energy = data.fe.innopaths %>%
+    filter(period == 2040) %>%
+    pull(median.twh),
+  time.slice = 2040
+)
+
+# Global breakthrough
+p1.glob <- plotComparisonBreakthrough(regi = "Global",
+                                      anticip = 5,
+                                      title = NULL)
+
+# Global 2030 capacity
+p2.glob <- plotComparisonCapacity(
+  regi = "Global",
+  anticip = 5,
+  title = "2030",
+  final.energy = data.fe.nze %>%
+    filter(period == 2030) %>%
+    pull(value),
+  time.slice = 2030
+)
+
+# Global 2040 capacity
+p3.glob <- plotComparisonCapacity(
+  regi = "Global",
+  anticip = 5,
+  title = "2040",
+  final.energy = data.fe.nze %>%
+    filter(period == 2040) %>%
+    pull(value),
+  time.slice = 2040
+)
+
+# Arranging plots
+p.breakthrough <- plot_grid(p1.eu + theme(legend.position = "none"),
+                            p1.glob + theme(legend.position = "none"),
+                            ncol = 2,
+                            labels = c("a", "b"),
+                            label_size = font.size)
+
+# Axes (lower panel)
+axis.left <- ggdraw() +
+  draw_label(
+    "Electrolysis capacity [GW]",
+    hjust = 0.5,
+    size = font.size - 1,
+    angle = 90
+  )
+axis.right <- ggdraw() + 
+  draw_label(
+    "Final energy share [%]",
+    hjust = 0.5,
+    size = font.size - 1,
+    angle = 270
+  )
+
+# Lower panel
+p.quantities <- plot_grid(axis.left,
+                          p2.eu + theme(legend.position = "none"),
+                          p3.eu + theme(legend.position = "none"),
+                          p2.glob + theme(legend.position = "none"),
+                          p3.glob + theme(legend.position = "none"),
+                          axis.right,
+                          ncol = 6,
+                          rel_widths = c(0.1, 1, 1, 1, 1, 0.1),
+                          labels = c("", "c", "d", "e", "f", ""),
+                          label_size = font.size)
+
+p.legend <- get_legend(p2.glob)
+
+# Title top panel
+title.top <- ggdraw() +
+  draw_label(
+    "Probability distribution of breakthrough year",
+    hjust = 0.5,
+    size = font.size,
+    fontface = "bold"
+  )
+
+# Title lower panel
+title.bottom <- ggdraw() +
+  draw_label(
+    "Probability distribution of electrolysis capacity",
+    hjust = 0.5,
+    size = font.size,
+    fontface = "bold"
+  )
+
+# Title EU
+title.eu <- ggdraw() +
+  draw_label(
+    "EU",
+    hjust = 0.5,
+    size = font.size + 1,
+    fontface = "bold"
+  )
+
+# Title Global
+title.glob <- ggdraw() +
+  draw_label(
+    "Global",
+    hjust = 0.5,
+    size = font.size + 1,
+    fontface = "bold"
+  )
+
+# Combine region titles
+title.reg <- plot_grid(title.eu, title.glob)
+
+# Arrange full plot
+p <- plot_grid(
+  title.reg,
+  title.top,
+  p.breakthrough,
+  NULL,
+  title.bottom,
+  p.quantities,
+  p.legend,
+  ncol = 1,
+  rel_heights = c(0.1, 0.1, 1, 0.15, 0.1, 0.85, 0.2)
+)
+
+print(p)
+ggsave(paste0(path.output, "FIG06_conventional_vs_unconventional.png"),
+       width = 18, height = 12, units = "cm", bg = "white")
+ggsave(paste0(path.output, "FIG06_conventional_vs_unconventional.svg"),
+       width = 18, height = 12, units = "cm")  # Leave out bg for editing
+
+```
+
+## Quantiles of breakthrough year
+
+```{r, message = FALSE}
+for (r in c("EU", "Global")){
+  
+  data.stat.conv <- data.results %>%
+    filter(region == r, anticipation == 5) %>%
+    select(!demand) %>%
+    unnest(sensitivities) %>%
+    unnest(results) %>%
+    mutate(abs.growth = forecast - lag(forecast)) %>%
+    group_by(sample) %>%
+    filter(abs.growth == max(abs.growth)) %>%
+    mutate(type = "Conventional growth")
+  
+  data.stat.unconv <- data.results.unconv %>%
+    filter(region == r, anticipation == 5) %>%
+    select(!demand) %>%
+    unnest(sensitivities) %>%
+    unnest(results) %>%
+    mutate(abs.growth = forecast - lag(forecast)) %>%
+    group_by(sample) %>%
+    filter(abs.growth == max(abs.growth)) %>%
+    mutate(type = "Unconventional growth")
+  
+  data.stat <- bind_rows(data.stat.conv, data.stat.unconv) %>%
+    group_by(type) %>%
+    summarise(quibble(year))
+  
+  print(data.stat)
+}
+```
+
+## Quantiles of final energy share
+
+```{r, message = FALSE}
+
+t <- 2035
+
+# EU
+fe.eu <- data.fe.innopaths %>% 
+  filter(period == t) %>% 
+  pull(median.twh)
+
+data.stat.conv <- data.results %>% 
+  filter(region == "EU",
+         anticipation == 5) %>% 
+  unnest(sensitivities) %>%
+  select(!demand) %>%
+  unnest(results) %>%
+  drop_na(forecast) %>%
+  filter(year == t) %>% 
+  mutate(share = 100 * forecast * flh * eff * 1e-3 / fe.eu) %>% 
+  mutate(type = "Conventional")
+
+data.stat.unconv <- data.results.unconv %>% 
+  filter(region == "EU",
+         anticipation == 5) %>% 
+  unnest(sensitivities) %>%
+  select(!demand) %>%
+  unnest(results) %>%
+  drop_na(forecast) %>%
+  filter(year == t) %>% 
+  mutate(share = 100 * forecast * flh * eff * 1e-3 / fe.eu) %>% 
+  mutate(type = "Unconventional")  
+
+data.stat <- bind_rows(data.stat.conv, data.stat.unconv) %>% 
+  group_by(type) %>% 
+  summarise(quibble(share))
+print(data.stat)
+
+# Global
+fe.glob <- data.fe.nze %>% 
+  filter(period == t) %>% 
+  pull(value)
+
+data.stat.conv <- data.results %>% 
+  filter(region == "Global",
+         anticipation == 5) %>% 
+  unnest(sensitivities) %>%
+  select(!demand) %>%
+  unnest(results) %>%
+  drop_na(forecast) %>%
+  filter(year == t) %>% 
+  mutate(share = 100 * forecast * flh * eff * 1e-3 / fe.glob) %>% 
+  mutate(type = "Conventional")
+
+data.stat.unconv <- data.results.unconv %>% 
+  filter(region == "Global",
+         anticipation == 5) %>% 
+  unnest(sensitivities) %>%
+  select(!demand) %>%
+  unnest(results) %>%
+  drop_na(forecast) %>%
+  filter(year == t) %>% 
+  mutate(share = 100 * forecast * flh * eff * 1e-3 / fe.glob) %>% 
+  mutate(type = "Unconventional")  
+
+data.stat <- bind_rows(data.stat.conv, data.stat.unconv) %>% 
+  group_by(type) %>% 
+  summarise(quibble(share))
+print(data.stat)
+
+```
+
+## Probability of reaching 2030 targets
+
+```{r}
+
+t <- 2030
+
+# EU
+data.stat.conv <- data.results %>% 
+  filter(region == "EU",
+         anticipation == 5) %>% 
+  unnest(sensitivities) %>%
+  select(!demand) %>%
+  unnest(results) %>%
+  drop_na(forecast) %>%
+  filter(year == t) %>% 
+  mutate(type = "Conventional")
+
+data.stat.unconv <- data.results.unconv %>% 
+  filter(region == "EU",
+         anticipation == 5) %>% 
+  unnest(sensitivities) %>%
+  select(!demand) %>%
+  unnest(results) %>%
+  drop_na(forecast) %>%
+  filter(year == t) %>% 
+  mutate(type = "Unconventional")  
+
+data.stat <- bind_rows(data.stat.conv, data.stat.unconv) %>% 
+  group_by(type) %>% 
+  summarise(n_tot = n(),
+            n_gt = sum(forecast > 40),
+            p = n_gt/n_tot)
+print(data.stat)
+
+# Global
+data.stat.conv <- data.results %>% 
+  filter(region == "Global",
+         anticipation == 5) %>% 
+  unnest(sensitivities) %>%
+  select(!demand) %>%
+  unnest(results) %>%
+  drop_na(forecast) %>%
+  filter(year == t) %>% 
+  mutate(type = "Conventional")
+
+data.stat.unconv <- data.results.unconv %>% 
+  filter(region == "Global",
+         anticipation == 5) %>% 
+  unnest(sensitivities) %>%
+  select(!demand) %>%
+  unnest(results) %>%
+  drop_na(forecast) %>%
+  filter(year == t) %>% 
+  mutate(type = "Unconventional")  
+
+data.stat <- bind_rows(data.stat.conv, data.stat.unconv) %>% 
+  group_by(type) %>% 
+  summarise(n_tot = n(),
+            n_gt = sum(forecast > 850),
+            p = n_gt/n_tot)
+print(data.stat)
+
+```
+
+
+# Extended data figures
+
+## EXT FIG 1: Wind and solar growth, implicit demand pull
+
+```{r, message = FALSE, warning = FALSE}
+
+# EU solar
+p1 <-
+  plotWindSolar(
+    data.bp = data.bp,
+    data.bp.fit = data.bp.fit,
+    slice.len = 7,
+    regi = "EU",
+    tech = "solar",
+    slice.st = 1997,
+    color = color.pv
+  )
+
+# EU wind
+p2 <-
+  plotWindSolar(
+    data.bp = data.bp,
+    data.bp.fit = data.bp.fit,
+    slice.len = 7,
+    regi = "EU",
+    tech = "wind",
+    slice.st = 1997,
+    color = color.wind
+  )
+
+# Global solar
+p3 <-
+  plotWindSolar(
+    data.bp = data.bp,
+    data.bp.fit = data.bp.fit,
+    slice.len = 7,
+    regi = "Global",
+    tech = "solar",
+    slice.st = 1996,
+    color = color.pv
+  )
+
+# Global wind
+p4 <-
+  plotWindSolar(
+    data.bp = data.bp,
+    data.bp.fit = data.bp.fit,
+    slice.len = 7,
+    regi = "Global",
+    tech = "wind",
+    slice.st = 1995,
+    color = color.wind
+  )
+
+# Arrange plots
+p <- plot_grid(p1 + theme(legend.position = "none"),
+               p3 + theme(legend.position = "none"),
+               get_legend(p3),
+               p2 + theme(legend.position = "none"),
+               p4 + theme(legend.position = "none"),
+               get_legend(p4),
+               ncol = 3,
+               labels = c("a", "b", "", "c", "d", ""),
+               label_size = 1.2*font.size,
+               rel_widths = c(1, 1, 0.4))
+
+print(p)
+ggsave(paste0(path.output, "EXT_FIG01_wind_solar.png"),
+       width = 18, height = 16, bg = "white", units = "cm")
+ggsave(paste0(path.output, "EXT_FIG01_wind_solar.svg"),
+       width = 18, height = 16, bg = "white", units = "cm")
+
+```
+
+## EXT FIG 2: Conventional growth distributions for different slice lengths
+
+```{r}
+
+plots <- NULL
+for (r in 1:2){
+  
+  # Get values
+  growth.min <- data.input.param$growth.min[[r]]
+  growth.max <- 1.25  # Only for plotting
+  
+  data.plot.density <- NULL
+  for (l in unique(data.bp.fit$slice.length)){
+    
+    temp <- tibble(
+      growth = seq(growth.min, growth.max, length.out = 100),
+      growth.dens = dtruncnorm(
+        growth,
+        a = growth.min,
+        mean = data.bp.fit %>%
+          filter(slice.length == l,
+                 region == regions.bp$name[r]) %>%
+          pull(b) %>%
+          mean(),
+        sd = data.bp.fit %>%
+          filter(slice.length == l,
+                 region == regions.bp$name[r]) %>%
+          pull(b) %>%
+          sd()
+      ),
+      slice.length = paste0(l, " years")
+    ) %>% 
+      order.levels(slice.length = c("5 years",
+                                    "6 years",
+                                    "7 years",
+                                    "8 years",
+                                    "9 years",
+                                    "10 years"))
+    
+    data.plot.density <- bind_rows(data.plot.density, temp)
+    
+  }
+
+  # Growth rate
+  p.growth <- ggplot() + 
+    # Distribution
+    geom_line(data = data.plot.density,
+              mapping = aes(x = 100*growth, y = growth.dens, color = slice.length)) +
+    scale_color_npg(name = "Slice length") +
+    geom_area(data = data.plot.density,
+              mapping = aes(x = 100*growth, y = growth.dens, fill = slice.length),
+              position = "identity",
+              alpha = 0.05) +
+    scale_fill_npg(name = "Slice length") +
+    xlab("Emergence growth rate [%/yr]") + 
+    ylab("Probability density") +
+    ggtitle(regions.h2$name[[r]]) +
+    theme(# Only line for y axis
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          plot.title = element_text(hjust = 0.5, face = "bold"))
+  plots <- append(plots, list(p.growth))
+
+}
+
+# Arrange plots
+p <- plot_grid(plots[[1]] + theme(legend.position = "none"),
+               plots[[2]] + theme(legend.position = "none"),
+               get_legend(plots[[2]]),
+               nrow = 1,
+               rel_widths = c(1, 1, 0.2),
+               labels = c("a", "b"),
+               label_size = 1.2*font.size)
+
+print(p)
+ggsave(paste0(path.output, "EXT_FIG02_growth_different_slice_length.png"),
+       width = 16, height = 8, units = "cm", bg = "white")
+ggsave(paste0(path.output, "EXT_FIG02_growth_different_slice_length.svg"),
+       width = 16, height = 8, units = "cm", bg = "white")
+
+```
+
+## EXT FIG 3: Conventional growth sensitivity analysis of anticipation
+
+```{r}
+
+p1 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "EU", anticipation == 0),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2038,
+  title = "EU, no anticipation",
+  zoom.panel = F
+)
+
+p2 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "Global", anticipation == 0),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2045,
+  title = "Global, no anticipation",
+  zoom.panel = F
+)
+
+p3 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "EU", anticipation == 10),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2038,
+  title = "EU, 10 years anticipation",
+  zoom.panel = F
+)
+
+p4 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "Global", anticipation == 10),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2045,
+  title = "Global, 10 years anticipation",
+  zoom.panel = F
+)
+
+p5 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "EU", anticipation == 100),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2038,
+  title = "EU, full anticipation",
+  zoom.panel = F
+)
+
+p6 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "Global", anticipation == 100),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2045,
+  title = "Global, full anticipation",
+  zoom.panel = F
+)
+
+p.legend <- p1[[2]]
+
+p.plots <- plot_grid(p1[[1]], p2[[1]],
+                     p3[[1]], p4[[1]],
+                     p5[[1]], p6[[1]],
+                     ncol = 2,
+                     rel_widths = c(1, 1),
+                     labels = "auto",
+                     label_size = 1.2*font.size)
+
+p <- plot_grid(p.plots,
+               NULL,
+               p.legend,
+               ncol = 3,
+               rel_widths = c(1, 0.05, 0.15))
+
+print(p)
+ggsave(paste0(path.output, "EXT_FIG03_sensitivity_anticipation_conventional.png"),
+       width = 18, height = 18, units = "cm", bg = "white")
+ggsave(paste0(path.output, "EXT_FIG03_sensitivity_anticipation_conventional.svg"),
+       width = 18, height = 18, units = "cm", bg = "white")
+
+```
+
+## EXT FIG 4: Unconventional growth sensitivity analysis of anticipation
+
+```{r}
+
+p1 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results.unconv %>%
+    filter(region == "EU", anticipation == 0),
+  data.targets = data.targets,
+  colour = colours[2],
+  marginal.year = 2030,
+  title = "EU, no anticipation",
+  zoom.panel = F
+)
+
+p2 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results.unconv %>%
+    filter(region == "Global", anticipation == 0),
+  data.targets = data.targets,
+  colour = colours[2],
+  marginal.year = 2030,
+  title = "Global, no anticipation",
+  zoom.panel = F
+)
+
+p3 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results.unconv %>%
+    filter(region == "EU", anticipation == 10),
+  data.targets = data.targets,
+  colour = colours[2],
+  marginal.year = 2030,
+  title = "EU, 10 years anticipation",
+  zoom.panel = F
+)
+
+p4 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results.unconv %>%
+    filter(region == "Global", anticipation == 10),
+  data.targets = data.targets,
+  colour = colours[2],
+  marginal.year = 2030,
+  title = "Global, 10 years anticipation",
+  zoom.panel = F
+)
+
+p5 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results.unconv %>%
+    filter(region == "EU", anticipation == 100),
+  data.targets = data.targets,
+  colour = colours[2],
+  marginal.year = 2030,
+  title = "EU, full anticipation",
+  zoom.panel = F
+)
+
+p6 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results.unconv %>%
+    filter(region == "Global", anticipation == 100),
+  data.targets = data.targets,
+  colour = colours[2],
+  marginal.year = 2030,
+  title = "Global, full anticipation",
+  zoom.panel = F
+)
+
+p.legend <- p1[[2]]
+
+p.plots <- plot_grid(p1[[1]], p2[[1]],
+                     p3[[1]], p4[[1]],
+                     p5[[1]], p6[[1]],
+                     ncol = 2,
+                     rel_widths = c(1, 1),
+                     labels = "auto",
+                     label_size = 1.2*font.size)
+
+p <- plot_grid(p.plots,
+               NULL,
+               p.legend,
+               ncol = 3,
+               rel_widths = c(1, 0.05, 0.15))
+
+print(p)
+ggsave(paste0(path.output, "EXT_FIG04_sensitivity_anticipation_unconventional.png"),
+       width = 18, height = 18, units = "cm", bg = "white")
+ggsave(paste0(path.output, "EXT_FIG04_sensitivity_anticipation_unconventional.svg"),
+       width = 18, height = 18, units = "cm", bg = "white")
+
+```
+
+## EXT FIG 5: Electrolysis capacity distribution for additional years
+
+```{r}
+
+plots.eu <- NULL
+plots.glob <- NULL
+
+time.plot <- seq(2025, 2050, 5)
+
+# Interpolate IEA NZE
+data.fe.nze.interpolate <- data.fe.nze %>% 
+  complete(period = seq(2020, 2050, 5)) %>% 
+  mutate(value = na.approx(value),
+         unit = "TWh/yr")
+
+for (t in time.plot){
+  
+  p.eu <- plotComparisonCapacity(regi = "EU",
+                                 anticip = 5,
+                                 title = t,
+                                 final.energy = data.fe.innopaths %>% 
+                                   filter(period == t) %>% 
+                                   pull(median.twh),
+                                 time.slice = t)
+  
+  p.glob <- plotComparisonCapacity(regi = "Global",
+                                   anticip = 5,
+                                   title = t,
+                                   final.energy = data.fe.nze.interpolate %>% 
+                                     filter(period == t) %>% 
+                                     pull(value),
+                                   time.slice = t)
+  
+  plots.eu <- append(plots.eu, list(p.eu))
+  
+  plots.glob <- append(plots.glob, list(p.glob))
+  
+}
+
+# Arrange plots
+p.plots <- plot_grid(
+  plots.eu[[1]] + theme(legend.position = "none"),
+  plots.eu[[2]] + theme(legend.position = "none"),
+  plots.glob[[1]] + theme(legend.position = "none"),
+  plots.glob[[2]] + theme(legend.position = "none"),
+  plots.eu[[3]] + theme(legend.position = "none"),
+  plots.eu[[4]] + theme(legend.position = "none"),
+  plots.glob[[3]] + theme(legend.position = "none"),
+  plots.glob[[4]] + theme(legend.position = "none"),
+  plots.eu[[5]] + theme(legend.position = "none"),
+  plots.eu[[6]] + theme(legend.position = "none"),
+  plots.glob[[5]] + theme(legend.position = "none"),
+  plots.glob[[6]] + theme(legend.position = "none"),
+  ncol = 4,
+  labels = "auto",
+  label_size = font.size
+)
+
+p.legend <- get_legend(plots.eu[[1]])
+
+# Title EU
+title.eu <- ggdraw() +
+  draw_label(
+    "EU",
+    hjust = 0.5,
+    size = font.size + 1,
+    fontface = "bold"
+  )
+
+# Title Global
+title.glob <- ggdraw() +
+  draw_label(
+    "Global",
+    hjust = 0.5,
+    size = font.size + 1,
+    fontface = "bold"
+  )
+
+# Combine region titles
+title.reg <- plot_grid(NULL,
+                       title.eu,
+                       title.glob,
+                       NULL,
+                       ncol = 4,
+                       rel_widths = c(0.03, 1, 1, 0.03))
+
+# Axes
+axis.left <- ggdraw() +
+  draw_label(
+    "Electrolysis capacity [GW]",
+    hjust = 0.5,
+    size = font.size - 1,
+    angle = 90
+  )
+axis.right <- ggdraw() + 
+  draw_label(
+    "Final energy share [%]",
+    hjust = 0.5,
+    size = font.size - 1,
+    angle = 270
+  )
+
+# Add axes
+p.with.axes <- plot_grid(
+  axis.left,
+  p.plots,
+  axis.right,
+  ncol = 3,
+  rel_widths = c(0.03, 1, 0.03)
+)
+
+# Arrange full plot
+p <- plot_grid(
+  title.reg,
+  p.with.axes,
+  p.legend,
+  ncol = 1,
+  rel_heights = c(0.08, 1, 0.08)
+)
+
+print(p)
+ggsave(paste0(path.output, "EXT_FIG05_capacity_distributions_2025-2050.png"),
+       width = 18, height = 14, units = "cm", bg = "white")
+ggsave(paste0(path.output, "EXT_FIG05_capacity_distributions_2025-2050.svg"),
+       width = 18, height = 14, units = "cm", bg = "white")
+
+```
