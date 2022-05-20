@@ -219,7 +219,7 @@ plotIllustration <- function() {
     scale_x_continuous(name = "Time",
                        limits = c(-5, 105),
                        expand = c(0, 0)) +
-    scale_y_continuous(name = "Capacity",
+    scale_y_continuous(name = "Capacity [GW]",
                        limits = c(-50, 1100),
                        expand = c(0, 0)) +
     # Shade past grey

@@ -84,29 +84,5 @@ calcMonteCarloSample <- function(N, a.status, cap.1, cumprob.1, feasibility.succ
     
   }
   
-  # CAPEX
-  capex.mean <- mean(data.capex$Cost_eu_KW)
-  capex.sd <- sd(data.capex$Cost_eu_KW)
-  capex.min <- min(data.capex$Cost_eu_KW)
-  capex.max <- max(data.capex$Cost_eu_KW)
-  capex.sample <- rtruncnorm(n = N, mean = capex.mean, sd = capex.sd,
-                             a = capex.min,
-                             b = capex.max)
-  # Save sample
-  data.input <- data.input %>% 
-    mutate(capex = rep(capex.sample, dim(regions.bp)[1]))
-  
-  # Learning rate
-  lr.mean <- mean(data.learning$Learning_rate)
-  lr.sd <- mean(data.learning$Learning_rate)
-  lr.min <- min(data.learning$Learning_rate)
-  lr.max <- max(data.learning$Learning_rate)
-  lr.sample <- rtruncnorm(n = N, mean = lr.mean, sd = lr.sd,
-                          a = lr.min,
-                          b = lr.max)
-  # Save sample
-  data.input <- data.input %>% 
-    mutate(learning = rep(lr.sample, dim(regions.bp)[1]))
-  
   return(list(data.input, data.input.param))
 }

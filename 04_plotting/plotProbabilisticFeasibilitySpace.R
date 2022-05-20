@@ -1,18 +1,27 @@
 plotProbabilisticFeasibilitySpace <- function(data.row,
                                               data.targets,
                                               colour,
+                                              plot.marginal = T,
                                               marginal.year,
                                               title,
                                               ci.80 = F,  # 80% confidence int.
                                               slices = 500,
                                               random.paths = 10,
-                                              zoom.panel = T) {
+                                              zoom.panel = T,
+                                              gompertz = F) {
   
   # Unnest results
   data.plot <- data.row %>%
     unnest(sensitivities) %>%
     select(!demand) %>%
     unnest(results)
+  
+  # Plot Gompertz model instead of logistic if switch activated
+  if (gompertz == T){
+    data.plot <- data.plot %>% 
+      mutate(forecast = forecast.gomp,
+             demand = demand.full)
+  }
   
   # Calculate median and percentiles
   if (ci.80 == T){
@@ -73,10 +82,6 @@ plotProbabilisticFeasibilitySpace <- function(data.row,
   data.plot.targets <- data.targets %>%
     filter(region == unique(data.plot$region)[[1]])
   
-  # Marginal at year X
-  data.marginal <- data.raster %>%
-    filter(year == marginal.year)
-  
   # Plot using ggplot2::geom_raster
   p.facet <- ggplot() +
     # Density
@@ -93,13 +98,13 @@ plotProbabilisticFeasibilitySpace <- function(data.row,
         x = year,
         y = forecast,
         group = sample,
-        color = "Exemplary path"
+        color = "Example path"
       ),
       lwd = 0.5,
       alpha = 0.5
     ) +
     scale_color_manual(
-      values = c("Exemplary path" = "grey"),
+      values = c("Example path" = "grey"),
       name = NULL,
       guide = guide_legend(order = 3)
     ) +
@@ -152,7 +157,10 @@ plotProbabilisticFeasibilitySpace <- function(data.row,
     # Title
     ggtitle(title) +
     theme(legend.position = "right",
-          legend.justification = "center")
+          legend.justification = "center",
+          plot.title = element_text(
+            face = "bold",
+            size = font.size))
   # Add optional zoom panel
   if (zoom.panel == T) {
     p.facet <- p.facet +
@@ -165,48 +173,57 @@ plotProbabilisticFeasibilitySpace <- function(data.row,
       )
   }
   
-  # Marginal density plot
-  p.dens <- ggplot(data = data.marginal) +
-    geom_ribbon(
-      mapping = aes(x = forecast, ymax = density),
-      ymin = 0,
-      fill = colour
-    ) +
-    geom_line(mapping = aes(x = forecast, y = density)) +
-    geom_text(
-      x = 1.03 * max(data.marginal$forecast),
-      y = 0.5,
-      hjust = "middle",
-      label = marginal.year,
-      size = (font.size - 1) / .pt
-    ) +
-    ylim(0, 1) +
-    coord_flip() +
-    theme_void()
-  
-  # Position of marginal density plot (manual adjustment due to facet zoom)
-  if (zoom.panel == T) {
-    p.dens.row <- plot_grid(NULL,
-                            p.dens,
-                            NULL,
-                            ncol = 1,
-                            rel_heights = c(0.11, 1, 0.8))
+  if (plot.marginal == T){
+    
+    # Marginal at year X
+    data.marginal <- data.raster %>%
+      filter(year == marginal.year)
+    
+    # Marginal density plot
+    p.dens <- ggplot(data = data.marginal) +
+      geom_ribbon(
+        mapping = aes(x = forecast, ymax = density),
+        ymin = 0,
+        fill = colour
+      ) +
+      geom_line(mapping = aes(x = forecast, y = density)) +
+      geom_text(
+        x = 1.03 * max(data.marginal$forecast),
+        y = 0.5,
+        hjust = "middle",
+        label = marginal.year,
+        size = (font.size - 1) / .pt
+      ) +
+      ylim(0, 1) +
+      coord_flip() +
+      theme_void()
+    
+    # Position of marginal density plot (manual adjustment due to facet zoom)
+    if (zoom.panel == T) {
+      p.dens.row <- plot_grid(NULL,
+                              p.dens,
+                              NULL,
+                              ncol = 1,
+                              rel_heights = c(0.11, 1, 0.8))
+    } else {
+      p.dens.row <- plot_grid(NULL,
+                              p.dens,
+                              NULL,
+                              ncol = 1,
+                              rel_heights = c(0.1, 1, 0.08))
+    }
+    
+    # Put facet plot and marginal plot beside each other
+    p.plot <- plot_grid(
+      p.facet + theme(legend.position = "none"),
+      p.dens.row,
+      ncol = 2,
+      rel_widths = c(9, 1)
+    )
   } else {
-    p.dens.row <- plot_grid(NULL,
-                            p.dens,
-                            NULL,
-                            ncol = 1,
-                            rel_heights = c(0.1, 1, 0.08))
+    p.plot <- p.facet + theme(legend.position = "none")
   }
-  
-  # Put facet plot and marginal plot beside each other
-  p.plot <- plot_grid(
-    p.facet + theme(legend.position = "none"),
-    p.dens.row,
-    ncol = 2,
-    rel_widths = c(9, 1)
-  )
-  
+
   # Extract legend
   p.legend <- get_legend(p.facet)
   

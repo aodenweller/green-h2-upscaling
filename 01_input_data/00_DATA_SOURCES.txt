@@ -1,4 +1,4 @@
-This file was generated on 2022-01-27 by Adrian Odenweller (adrian.odenweller@pik-potsdam.de).
+This file was generated on 2022-05-20 by Adrian Odenweller (adrian.odenweller@pik-potsdam.de).
 
 The data used in this study was obtained from the following sources.
 
@@ -52,7 +52,21 @@ https://github.com/owid/covid-19-data/tree/master/public/data
 IEA (2021): Net Zero by 2050, International Energy Agency, Paris.
 https://www.iea.org/data-and-statistics/data-product/net-zero-by-2050-scenario
 
-14. EU final energy from INNOPATHS scenarios
+14. EU INNOPATHS scenarios for Final Energy and Secondary Energy|Hydrogen|Electricity
 Rodrigues et al. (2022): Narrative-driven alternative roads to achieve mid-century CO2 net neutrality in Europe, Energy 239, Part A.
 https://doi.org/10.1016/j.energy.2021.121908
 https://innopaths.eu/lcpp/#/
+
+15. IPCC SR1.5 scenarios (World)
+Daniel Huppmann, Elmar Kriegler, Volker Krey, Keywan Riahi, Joeri Rogelj, Katherine Calvin, Florian Humpenoeder, Alexander Popp, Steven K. Rose, John Weyant, Nico Bauer, Christoph Bertram, Valentina Bosetti, Jonathan Doelman, Laurent Drouet, Johannes Emmerling, Stefan Frank, Shinichiro Fujimori, David Gernaat, Arnulf Grubler, Celine Guivarch, Martin Haigh, Christian Holz, Gokul Iyer, Etsushi Kato, Kimon Keramidas, Alban Kitous, Florian Leblanc, Jing-Yu Liu, Konstantin Löffler, Gunnar Luderer, Adriana Marcucci, David McCollum, Silvana Mima, Ronald D. Sands, Fuminori Sano, Jessica Strefler, Junichi Tsutsui, Detlef Van Vuuren, Zoi Vrontisi, Marshall Wise, and Runsen Zhang.
+IAMC 1.5°C Scenario Explorer and Data hosted by IIASA.
+Integrated Assessment Modeling Consortium & International Institute for Applied Systems Analysis, 2019.
+https://doi.org/10.5281/zenodo.3363345
+https://data.ene.iiasa.ac.at/iamc-1.5c-explorer
+
+16. IPCC AR6 scenarios (R10 and World)
+Edward Byers, Volker Krey, Elmar Kriegler, Keywan Riahi, Roberto Schaeffer, Jarmo Kikstra, Robin Lamboll, Zebedee Nicholls, Marit Sanstad, Chris Smith, Kaj-Ivar van der Wijst, Franck Lecocq, Joana Portugal-Pereira, Yamina Saheb, Anders Strømann, Harald Winkler, Cornelia Auer, Elina Brutschin, Claire Lepault, Eduardo Müller-Casseres, Matthew Gidden, Daniel Huppmann, Peter Kolp, Giacomo Marangoni, Michaela Werning, Katherine Calvin, Celine Guivarch, Tomoko Hasegawa, Glen Peters, Julia Steinberger, Massimo Tavoni, Detlef von Vuuren, Piers Forster, Jared Lewis, Malte Meinshausen, Joeri Rogelj, Bjorn Samset, Ragnhild Skeie, Alaa Al Khourdajie.
+AR6 Scenarios Database hosted by IIASA
+International Institute for Applied Systems Analysis, 2022.
+https://10.5281/zenodo.5886912
+https://data.ene.iiasa.ac.at/ar6/

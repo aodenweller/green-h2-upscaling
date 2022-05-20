@@ -48,7 +48,7 @@ plotParameterDistributions <- function(data.input, data.input.param) {
                 mapping = aes(x = start, y = start.dens, color = "Density")) +
       scale_color_manual(name = NULL, values = c("Density" = "black")) +
       xlab(NULL) +
-      ylab("Probability density") +
+      ylab("Probability density [1/GW]") +
       xlim(0, start.max) +
       ggtitle(regions.h2$name[[r]]) +
       theme(
@@ -144,7 +144,7 @@ plotParameterDistributions <- function(data.input, data.input.param) {
       scale_color_manual(name = NULL, values = c("Density" = "black")) +
       scale_x_continuous(name = "Emergence growth rate [%/yr]", breaks = c(100 *
                                                                              bmin, seq(25, 150, 25))) +
-      ylab("Probability density") +
+      ylab("Probability density [yr]") +
       ggtitle(regions.h2$name[[r]]) +
       theme(
         panel.grid.major = element_blank(),
