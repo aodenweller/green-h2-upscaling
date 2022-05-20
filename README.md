@@ -14,7 +14,7 @@ Odenweller, A., Ueckerdt, F., Nemet, G. F., Jensterle, M., and Luderer, G.: *Pro
 ## Instructions
 There are two options to use this code, which are controlled by a switch in `main.Rmd`
 * Reproduction mode (default)
-  * Download the [pre-run simulation output from Zenodo](https://doi.org/10.5281/zenodo.5933122) and put all files into `02_output_plots`
+  * Download the [pre-run simulation output from Zenodo](https://doi.org/10.5281/zenodo.6567669) and put all files into `02_output_plots`
   * Run `main.Rmd`
   * This imports the simulation output, reproduces all article figures, and saves them into `02_output_plots` 
 * Simulation mode
