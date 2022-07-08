@@ -64,6 +64,7 @@ plotParameterDistributions <- function(data.input, data.input.param) {
         plot.margin = unit(c(0, 0, 0, 0), "cm"),
         plot.title = element_text(
           hjust = 0.5,
+          vjust = -1.5,
           face = "bold",
           size = font.size
         )

@@ -202,7 +202,7 @@ p <- plot_grid(p1, p3, p2, p4,
 print(p)
 ggsave(paste0(path.output, "FIG01_electrolysis_projects.png"),
        bg = "white", width = 18, height = 12, units = "cm")
-ggsave(paste0(path.output, "FIG01_electrolysis_projects.svg"),
+ggsave(paste0(path.output, "FIG01_electrolysis_projects.pdf"),
        bg = "white", width = 18, height = 12, units = "cm")
 ```
 
@@ -216,7 +216,7 @@ p <- plotIllustration()
 print(p)
 ggsave(paste0(path.output, "FIG02_illustration.png"),
        width = 18, height = 12, units = "cm", bg = "white")
-ggsave(paste0(path.output, "FIG02_illustration.svg"),
+ggsave(paste0(path.output, "FIG02_illustration.pdf"),
        width = 18, height = 12, units = "cm", bg = "white")
 ```
 
@@ -364,21 +364,23 @@ plots <- plotParameterDistributions(data.input = data.input,
 # Total plot
 p.col1 <- plot_grid(plots[[1]] + theme(legend.position = "none"),
                     plots[[2]] + theme(legend.position = "none"),
+                    NULL,
                     plots[[3]] + theme(legend.position = "none"),
                     ncol = 1,
                     align = "v",
-                    rel_heights = c(1, 0.15, 1.1),
-                    labels = c("a", "", "c"),
+                    rel_heights = c(1, 0.15, 0.05, 1.1),
+                    labels = c("a", "", "","c"),
                     label_size = font.size
                     )
 
 p.col2 <- plot_grid(plots[[4]] + theme(legend.position = "none"),
                     plots[[5]] + theme(legend.position = "none"),
+                    NULL,
                     plots[[6]] + theme(legend.position = "none"),
                     ncol = 1,
                     align = "v",
-                    rel_heights = c(1, 0.15, 1.1),
-                    labels = c("b", "", "d"),
+                    rel_heights = c(1, 0.15, 0.05, 1.1),
+                    labels = c("b", "", "","d"),
                     label_size = font.size
                     )
 
@@ -401,7 +403,7 @@ p <- plot_grid(p.plots,
 print(p)
 ggsave(paste0(path.output, "FIG03_parameter_distributions.png"),
        width = 18, height = 14, units = "cm", bg = "white")
-ggsave(paste0(path.output, "FIG03_parameter_distributions.svg"),
+ggsave(paste0(path.output, "FIG03_parameter_distributions.pdf"),
        width = 18, height = 14, units = "cm", bg = "white")
 ```
 
@@ -490,10 +492,10 @@ p2 <- plotProbabilisticFeasibilitySpace(
 
 p.legend <- p1[[2]]
 
-p.plots <- plot_grid(p1[[1]], p2[[1]],
-                     ncol = 2,
-                     rel_widths = c(1, 1),
-                     labels = "auto",
+p.plots <- plot_grid(p1[[1]], NULL, p2[[1]],
+                     ncol = 3,
+                     rel_widths = c(1, 0.05, 1),
+                     labels = c("a", "", "b"),
                      label_size = font.size)
 
 p <- plot_grid(p.plots,
@@ -505,7 +507,7 @@ p <- plot_grid(p.plots,
 print(p)
 ggsave(paste0(path.output, "FIG04_probabilistic_feasibility_space.png"),
        width = 18, height = 9, units = "cm", bg = "white")
-ggsave(paste0(path.output, "FIG04_probabilistic_feasibility_space.svg"),
+ggsave(paste0(path.output, "FIG04_probabilistic_feasibility_space.pdf"),
        width = 18, height = 9, units = "cm", bg = "white")
 ```
 
@@ -1001,21 +1003,25 @@ p.row1 <- plot_grid(p.curves + theme(legend.position = "none"),
                     label_size = font.size)
 
 p.row2 <- plot_grid(p1[[1]],
+                    NULL,
                     p2[[1]],
+                    NULL,
                     p1[[2]],
-                    ncol = 3,
-                    rel_widths = c(0.5, 0.5, 0.15),
-                    labels = c("c", "d", ""),
+                    ncol = 5,
+                    rel_widths = c(0.5, 0.025, 0.5, 0.05, 0.15),
+                    labels = c("c", "", "d", "", ""),
                     label_size = font.size)
 
 p <- plot_grid(p.row1,
+               NULL,
                p.row2,
-               ncol = 1)
+               ncol = 1,
+               rel_heights = c(1, 0.05, 1))
 
 print(p)
 ggsave(paste0(path.output, "FIG05_unconventional_growth.png"),
        width = 18, height = 13, units = "cm", bg = "white")
-ggsave(paste0(path.output, "FIG05_unconventional_growth.svg"),
+ggsave(paste0(path.output, "FIG05_unconventional_growth.pdf"),
        width = 18, height = 13, units = "cm", bg = "white")
 ```
 
@@ -1214,7 +1220,7 @@ p <- plot_grid(
 print(p)
 ggsave(paste0(path.output, "FIG06_conventional_vs_unconventional.png"),
        width = 18, height = 12, units = "cm", bg = "white")
-ggsave(paste0(path.output, "FIG06_conventional_vs_unconventional.svg"),
+ggsave(paste0(path.output, "FIG06_conventional_vs_unconventional.pdf"),
        width = 18, height = 12, units = "cm")  # Leave out bg for editing
 ```
 
@@ -1254,7 +1260,7 @@ for (r in c("EU", "Global")){
 ## Quantiles of final energy share
 
 ```{r, message = FALSE}
-t <- 2040
+t <- 2030
 
 # EU
 fe.eu <- data.fe.innopaths %>% 
@@ -1449,13 +1455,11 @@ p <- plot_grid(p1 + theme(legend.position = "none"),
                get_legend(p4),
                ncol = 3,
                labels = c("a", "b", "", "c", "d", ""),
-               label_size = 1.2*font.size,
+               label_size = font.size,
                rel_widths = c(1, 1, 0.4))
 
 print(p)
-ggsave(paste0(path.output, "EXT_FIG01_wind_solar.png"),
-       width = 18, height = 16, bg = "white", units = "cm")
-ggsave(paste0(path.output, "EXT_FIG01_wind_solar.svg"),
+ggsave(paste0(path.output, "EXT_FIG01_wind_solar.jpg"),
        width = 18, height = 16, bg = "white", units = "cm")
 ```
 
@@ -1518,7 +1522,9 @@ for (r in 1:2){
     theme(# Only line for y axis
           axis.text.y = element_blank(),
           axis.ticks.y = element_blank(),
-          plot.title = element_text(hjust = 0.5, face = "bold"))
+          plot.title = element_text(size = 7,
+                                    hjust = 0.5,
+                                    face = "bold"))
   plots <- append(plots, list(p.growth))
 
 }
@@ -1530,102 +1536,14 @@ p <- plot_grid(plots[[1]] + theme(legend.position = "none"),
                nrow = 1,
                rel_widths = c(1, 1, 0.2),
                labels = c("a", "b"),
-               label_size = 1.2*font.size)
+               label_size = 7)
 
 print(p)
-ggsave(paste0(path.output, "EXT_FIG02_growth_different_slice_length.png"),
-       width = 16, height = 8, units = "cm", bg = "white")
-ggsave(paste0(path.output, "EXT_FIG02_growth_different_slice_length.svg"),
+ggsave(paste0(path.output, "EXT_FIG02_growth_different_slice_length.jpg"),
        width = 16, height = 8, units = "cm", bg = "white")
 ```
 
-## EXT FIG 3: Conventional growth sensitivity analysis of anticipation
-
-```{r}
-p1 <- plotProbabilisticFeasibilitySpace(
-  data.row = data.results %>%
-    filter(region == "EU", anticipation == 0),
-  data.targets = data.targets,
-  colour = colours[1],
-  marginal.year = 2038,
-  title = "EU, no anticipation",
-  zoom.panel = F
-)
-
-p2 <- plotProbabilisticFeasibilitySpace(
-  data.row = data.results %>%
-    filter(region == "Global", anticipation == 0),
-  data.targets = data.targets,
-  colour = colours[1],
-  marginal.year = 2045,
-  title = "Global, no anticipation",
-  zoom.panel = F
-)
-
-p3 <- plotProbabilisticFeasibilitySpace(
-  data.row = data.results %>%
-    filter(region == "EU", anticipation == 10),
-  data.targets = data.targets,
-  colour = colours[1],
-  marginal.year = 2038,
-  title = "EU, 10 years anticipation",
-  zoom.panel = F
-)
-
-p4 <- plotProbabilisticFeasibilitySpace(
-  data.row = data.results %>%
-    filter(region == "Global", anticipation == 10),
-  data.targets = data.targets,
-  colour = colours[1],
-  marginal.year = 2045,
-  title = "Global, 10 years anticipation",
-  zoom.panel = F
-)
-
-p5 <- plotProbabilisticFeasibilitySpace(
-  data.row = data.results %>%
-    filter(region == "EU", anticipation == 100),
-  data.targets = data.targets,
-  colour = colours[1],
-  marginal.year = 2038,
-  title = "EU, full anticipation",
-  zoom.panel = F
-)
-
-p6 <- plotProbabilisticFeasibilitySpace(
-  data.row = data.results %>%
-    filter(region == "Global", anticipation == 100),
-  data.targets = data.targets,
-  colour = colours[1],
-  marginal.year = 2045,
-  title = "Global, full anticipation",
-  zoom.panel = F
-)
-
-p.legend <- p1[[2]]
-
-p.plots <- plot_grid(p1[[1]], p2[[1]],
-                     p3[[1]], p4[[1]],
-                     p5[[1]], p6[[1]],
-                     ncol = 2,
-                     rel_widths = c(1, 1),
-                     labels = "auto",
-                     label_size = font.size)
-
-p <- plot_grid(p.plots,
-               NULL,
-               p.legend,
-               ncol = 3,
-               rel_widths = c(1, 0.05, 0.15))
-
-print(p)
-ggsave(paste0(path.output, "EXT_FIG03_sensitivity_anticipation_conventional.png"),
-       width = 18, height = 18, units = "cm", bg = "white")
-ggsave(paste0(path.output, "EXT_FIG03_sensitivity_anticipation_conventional.svg"),
-       width = 18, height = 18, units = "cm", bg = "white")
-```
-
-## EXT FIG 4: Comparison with Gompertz model
+## EXT FIG 3: Comparison with Gompertz model
 
 ```{r}
 # Panel a and b: Line plot of mean to illustrate difference
@@ -1811,9 +1729,91 @@ p <- plot_grid(p.row1,
                p.row3,
                ncol = 1)
 print(p)
-ggsave(paste0(path.output, "EXT_FIG04_logistic_vs_gompertz.png"),
+ggsave(paste0(path.output, "EXT_FIG03_logistic_vs_gompertz.jpg"),
        width = 18, height = 18, units = "cm", bg = "white")
-ggsave(paste0(path.output, "EXT_FIG04_logistic_vs_gompertz.svg"),
+```
+
+## EXT FIG 4: Conventional growth sensitivity analysis of anticipation
+
+```{r}
+p1 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "EU", anticipation == 0),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2038,
+  title = "EU, no anticipation",
+  zoom.panel = F
+)
+
+p2 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "Global", anticipation == 0),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2045,
+  title = "Global, no anticipation",
+  zoom.panel = F
+)
+
+p3 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "EU", anticipation == 10),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2038,
+  title = "EU, 10 years anticipation",
+  zoom.panel = F
+)
+
+p4 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "Global", anticipation == 10),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2045,
+  title = "Global, 10 years anticipation",
+  zoom.panel = F
+)
+
+p5 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "EU", anticipation == 100),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2038,
+  title = "EU, full anticipation",
+  zoom.panel = F
+)
+
+p6 <- plotProbabilisticFeasibilitySpace(
+  data.row = data.results %>%
+    filter(region == "Global", anticipation == 100),
+  data.targets = data.targets,
+  colour = colours[1],
+  marginal.year = 2045,
+  title = "Global, full anticipation",
+  zoom.panel = F
+)
+
+p.legend <- p1[[2]]
+
+p.plots <- plot_grid(p1[[1]], p2[[1]],
+                     p3[[1]], p4[[1]],
+                     p5[[1]], p6[[1]],
+                     ncol = 2,
+                     rel_widths = c(1, 1),
+                     labels = "auto",
+                     label_size = font.size)
+
+p <- plot_grid(p.plots,
+               NULL,
+               p.legend,
+               ncol = 3,
+               rel_widths = c(1, 0.05, 0.15))
+
+print(p)
+ggsave(paste0(path.output, "EXT_FIG03_sensitivity_anticipation_conventional.jpg"),
        width = 18, height = 18, units = "cm", bg = "white")
 ```
 
@@ -1927,12 +1927,9 @@ p <- plot_grid(p1 + theme(legend.position = "none"),
                labels = c("a", "b", ""),
                label_size = font.size)
 print(p)
-ggsave(paste0(path.output, "EXT_FIG05_validation_announcements.png"),
-       width = 16, height = 8, units = "cm", bg = "white")
-ggsave(paste0(path.output, "EXT_FIG05_validation_announcements.svg"),
+ggsave(paste0(path.output, "EXT_FIG05_validation_announcements.jpg"),
        width = 16, height = 8, units = "cm", bg = "white")
 ```
-
 
 ## EXT FIG 6: Unconventional growth sensitivity analysis of anticipation
 
@@ -2006,7 +2003,7 @@ p.plots <- plot_grid(p1[[1]], p2[[1]],
                      ncol = 2,
                      rel_widths = c(1, 1),
                      labels = "auto",
-                     label_size = 1.2*font.size)
+                     label_size = font.size)
 
 p <- plot_grid(p.plots,
                NULL,
@@ -2015,9 +2012,7 @@ p <- plot_grid(p.plots,
                rel_widths = c(1, 0.05, 0.15))
 
 print(p)
-ggsave(paste0(path.output, "EXT_FIG06_sensitivity_anticipation_unconventional.png"),
-       width = 18, height = 18, units = "cm", bg = "white")
-ggsave(paste0(path.output, "EXT_FIG06_sensitivity_anticipation_unconventional.svg"),
+ggsave(paste0(path.output, "EXT_FIG06_sensitivity_anticipation_unconventional.jpg"),
        width = 18, height = 18, units = "cm", bg = "white")
 
 ```
@@ -2087,7 +2082,7 @@ title.eu <- ggdraw() +
   draw_label(
     "EU",
     hjust = 0.5,
-    size = font.size + 1,
+    size = font.size,
     fontface = "bold"
   )
 
@@ -2096,7 +2091,7 @@ title.glob <- ggdraw() +
   draw_label(
     "Global",
     hjust = 0.5,
-    size = font.size + 1,
+    size = font.size,
     fontface = "bold"
   )
 
@@ -2113,14 +2108,14 @@ axis.left <- ggdraw() +
   draw_label(
     "Electrolysis capacity [GW]",
     hjust = 0.5,
-    size = font.size - 1,
+    size = font.size,
     angle = 90
   )
 axis.right <- ggdraw() + 
   draw_label(
     "Final energy share [%]",
     hjust = 0.5,
-    size = font.size - 1,
+    size = font.size,
     angle = 270
   )
 
@@ -2143,11 +2138,8 @@ p <- plot_grid(
 )
 
 print(p)
-ggsave(paste0(path.output, "EXT_FIG07_capacity_distributions_2025-2050.png"),
+ggsave(paste0(path.output, "EXT_FIG07_capacity_distributions_2025-2050.jpg"),
        width = 18, height = 14, units = "cm", bg = "white")
-ggsave(paste0(path.output, "EXT_FIG07_capacity_distributions_2025-2050.svg"),
-       width = 18, height = 14, units = "cm", bg = "white")
-
 ```
 
 ## EXT FIG 8: Comparison with scenarios (IPCC AR6, IPCC SR1.5, others)
@@ -2294,14 +2286,16 @@ colours.scenarios.eu <- c("IPCC AR6" = colours[3],
 p1 <- ggplot() + 
   geom_boxplot(data = data.plot.eu.scenarios,
                mapping = aes(x = x, y = value, fill = factor(model)),
-               outlier.alpha = 0.3) +
+               outlier.alpha = 0.3,
+               coef = 1E20) +
   scale_fill_manual(name = "IAM scenarios",
                     values = colours.scenarios.eu,
                     guide = guide_legend(order = 1)) + 
   new_scale_fill() + 
   geom_boxplot(data = data.plot.eu.model,
                mapping = aes(x = x, y = value, fill = factor(model)),
-               outlier.alpha = 0.005) +
+               outlier.alpha = 0.005,
+               coef = 1E20) +
   scale_fill_manual(name = "Probabilistic diffusion model",
                     values = colours.model,
                     guide = guide_legend(order = 2)) + 
@@ -2317,7 +2311,8 @@ p1 <- ggplot() +
              scales = "free") +
   theme(legend.position = "bottom",
         legend.direction = "vertical",
-        plot.title = element_text(hjust = 0.5),
+        plot.title = element_text(size = 7,
+                                  hjust = 0.5),
         strip.background=element_rect(fill = "white"),
         strip.text=element_text(face = "bold"))
   
@@ -2458,14 +2453,16 @@ colours.scenarios.glob <- c("IPCC AR6" = colours[3],
 p2 <- ggplot() + 
   geom_boxplot(data = data.plot.glob.scenarios,
                mapping = aes(x = x, y = value, fill = factor(model)),
-               outlier.alpha = 0.3) +
+               outlier.alpha = 0.3,
+               coef = 1E20) +
   scale_fill_manual(name = "IAM scenarios",
                     values = colours.scenarios.glob,
                     guide = guide_legend(order = 1)) + 
   new_scale_fill() + 
   geom_boxplot(data = data.plot.glob.model,
                mapping = aes(x = x, y = value, fill = factor(model)),
-               outlier.alpha = 0.005) +
+               outlier.alpha = 0.005,
+               coef = 1E20) +
   scale_fill_manual(name = "Probabilistic diffusion model",
                     values = colours.model,
                     guide = guide_legend(order = 2)) + 
@@ -2481,7 +2478,8 @@ p2 <- ggplot() +
              scales = "free") +
   theme(legend.position = "bottom",
         legend.direction = "vertical",
-        plot.title = element_text(hjust = 0.5),
+        plot.title = element_text(size = 7,
+                                  hjust = 0.5),
         strip.background=element_rect(fill = "white"),
         strip.text=element_text(face = "bold"))
 
@@ -2500,9 +2498,6 @@ p <- plot_grid(p.plots,
                rel_heights = c(1,0.2))
 
 print(p)
-ggsave(paste0(path.output, "EXT_FIG08_comparison_scenarios.png"),
+ggsave(paste0(path.output, "EXT_FIG08_comparison_scenarios.jpg"),
        width = 18, height = 14, units = "cm", bg = "white")
-ggsave(paste0(path.output, "EXT_FIG08_comparison_scenarios.svg"),
-       width = 18, height = 14, units = "cm", bg = "white")
-
 ```

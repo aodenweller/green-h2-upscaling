@@ -134,7 +134,7 @@ plotIllustration <- function() {
       mapping = aes(x = 68, y = 550, label = "3.1 Demand pull\nmagnitude"),
       align = "center",
       color = color.determinant[3],
-      size = 8 / .pt
+      size = 7 / .pt
     ) +
     # Anticipation arrows
     geom_segment(
@@ -153,10 +153,10 @@ plotIllustration <- function() {
     ) +
     # Demand pull anticipation label
     geom_label(
-      mapping = aes(x = 35, y = 580, label = "3.2 Demand pull\nanticipation"),
+      mapping = aes(x = 38, y = 585, label = "3.2 Demand pull\nanticipation"),
       align = "center",
       color = color.determinant[4],
-      size = 8 / .pt
+      size = 7 / .pt
     ) +
     # Demand pull arrows with anticipation
     geom_segment(
@@ -190,30 +190,30 @@ plotIllustration <- function() {
                     label = "Historical"),
       hjust = "center",
       vjust = "center",
-      size = 8 / .pt
+      size = 7 / .pt
     ) +
     geom_text(
       mapping = aes(x = 10, y = 1050,
                     label = "Formative"),
       hjust = "center",
       vjust = "center",
-      size = 8 / .pt
+      size = 7 / .pt
     ) +
     geom_text(
       mapping = aes(x = 45, y = 1050,
                     label = "Growth"),
       hjust = "center",
       vjust = "center",
-      size = 8 / .pt
+      size = 7 / .pt
     ) +
     geom_text(
       mapping = aes(x = 80, y = 1050,
                     label = "Saturation"),
       hjust = "center",
       vjust = "center",
-      size = 8 / .pt
+      size = 7 / .pt
     ) +
-    theme_cowplot(8) +
+    theme_cowplot(7) +
     theme(axis.text = element_blank(),
           axis.ticks = element_blank()) +
     scale_x_continuous(name = "Time",
@@ -261,7 +261,7 @@ plotIllustration <- function() {
       ),
       align = "center",
       color = color.determinant[1],
-      size = 8 / .pt
+      size = 7 / .pt
     ) +
     # Emergence growth label
     geom_label(
@@ -270,7 +270,7 @@ plotIllustration <- function() {
                     label = "2. Emergence\ngrowth rate"),
       align = "center",
       color = color.determinant[2],
-      size = 8 / .pt
+      size = 7 / .pt
     )
   
   p.with.inset <- ggdraw() +

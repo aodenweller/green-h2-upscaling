@@ -77,7 +77,8 @@ plotWindSolar <-
     xlab(NULL) + 
     ylab("Capacity [GW]") + 
     ggtitle(paste0(regi, " ", tech)) +
-    theme(legend.key.size = unit(1, "line"))
+    theme(legend.key.size = unit(1, "line"),
+          plot.title = element_text(size = 7))
   
   return(p)
 }

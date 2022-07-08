@@ -28,7 +28,7 @@ plotElectrolysisProjects <-
       scale_x_continuous(name = NULL, breaks = c(seq(t.min, t.split, 5), t.split)) +
       ylab("Capacity [GW]") +
       theme(legend.position = c(0.2, 0.7),
-            plot.margin = unit(c(5, -2, 5, 5), "pt"))
+            plot.margin = unit(c(5, 0, 12, 5), "pt"))
     
     p2 <- ggplot() +
       geom_bar(
@@ -39,9 +39,9 @@ plotElectrolysisProjects <-
       ) +
       scale_fill_npg(name = NULL) +
       scale_x_continuous(name = NULL, breaks = c(t.split, t.max)) +
-      ylab(NULL) +
+      ylab("Capacity [GW]") +
       theme(legend.position = "none",
-            plot.margin = unit(c(5, 5, 5,-2), "pt"))
+            plot.margin = unit(c(5, 5, 12, 0), "pt"))
     
     p.title <- ggdraw() +
       draw_label(title,
